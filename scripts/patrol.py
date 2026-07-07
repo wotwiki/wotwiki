@@ -40,26 +40,27 @@ wiki_name = "wot"
 # Basic word misspellings need to exclude pronunciation strings
 # Incorporate all feasible common misspellings: https://wot.fandom.com/wiki/Wotwiki:List_of_common_misspellings
 #   Non-mundane entries from A-G have already been added.
-# Flag pages that have the Wotwiki featured article category (or otherwise might be targetd by DPL), but use {{PAGENAME}}
+# Flag pages that have the Wotwiki featured article category (or otherwise might be targetd by DPL) and use {{PAGENAME}}
 # Do more icon stuff. See Template:Featuredicon
-modifiers_lookbehind = r"(?<!image=)(?<!image\s=)(?<!image\s=\s)(?<!image=\s)(?<!File:)(?<!\w)"
-modifier_makelc_lookbehind = r"(?<![.!?]\s)(?<![*#])(?<![*#]\[\[)(?<![*#]\s\[\[)"
+modifier_lookbehind = r"(?<!image=)(?<!image\s=)(?<!image\s=\s)(?<!image=\s)(?<!File:)(?<!\w)"
+modifier_firstcase_lookbehind = r"(?<![.!?]\s)(?<![*#])(?<![*#]\[\[)(?<![*#]\s\[\[)"
 spelling_re_modifiers = [
-    [ "a'dam", modifiers_lookbehind + r"adam(?![A-Za-rt-z])", r"a'dam", 0 ],
+    [ "a'dam", modifier_lookbehind + r"adam(?![A-Za-rt-z])", r"a'dam", 0 ],
     [ "Aiel", r"(\W)[Aa]eil", r"\1Aiel", 0 ],
     [ "Amadician", r"Amadican", r"Amadician", re.IGNORECASE ],
     [ "Andoran", r"(\W)Andorian", r"\1Andoran", re.IGNORECASE ],
     [ "Artur Hawkwing", r"Arthur Hawkw{0,1}ing", r"Artur Hawkwing", re.IGNORECASE ],
     [ "Asha'man", r"(Ashamen)|(Asha'men)", r"Asha'man", re.IGNORECASE ],
-    [ "Asha'man (omitted apostrophe)", modifiers_lookbehind + r"Ashaman", r"Asha'man", re.IGNORECASE ],
+    [ "Asha'man (omitted apostrophe)", modifier_lookbehind + r"Ashaman", r"Asha'man", re.IGNORECASE ],
     [ "Atha'an Miere", r"Atha{1,2}n\smiere", r"Atha'an Miere", re.IGNORECASE ],
     [ "Cairhien", r"(Carhien)|(Cairhein)", r"Cairhien", re.IGNORECASE ],
     [ "Cairhienin", r"(carhienen)|(Cairheinen)|(Cairhienen)", r"Cairhienin", re.IGNORECASE ],
     [ "Callandor", r"Calandor", r"Callandor", re.IGNORECASE ],
+    [ "channeling", r"(?<!\w)([Cc])han{1,2}el{1,2}ing(?!\w)", r"\1hanneling", 0 ],
     [ "dareis", r"(?<!\w)([Dd])aries(?!\w)", r"\1areis", 0 ],
     [ "Draghkar", r"(?<!\w)([Dd])rakkar", r"\1raghkar", 0 ],
     [ "dreamspike", r"(dream)\s+spike", r"\1spike", re.IGNORECASE ],
-    [ "dreamspike (capitalization)", modifier_makelc_lookbehind + r"dreamspike", r"dreamspike", re.IGNORECASE ],
+    [ "dreamspike (capitalization)", modifier_firstcase_lookbehind + r"dreamspike", r"dreamspike", re.IGNORECASE ],
     [ "Ghealdanin", r"(?<!\w)ghealdanen", r"Ghealdanin", re.IGNORECASE ],
     [ "Ghenjei", r"(?<!\w)(genjei)|(ghenji)|(genji)", r"Ghenjei", re.IGNORECASE ],
     [ "gholam", r"(?<!\w)([Gg])ohlam", r"\1holam", 0 ],
@@ -67,7 +68,8 @@ spelling_re_modifiers = [
     [ "Gray Ajah", r"(?<!\w)grey ajah", r"Gray Ajah", re.IGNORECASE ],
     [ "Gray Man/Men", r"(?<!\w)([Gg])rey (M[ae]n)", r"\1ray \2", 0 ],
     [ "Kandorian", r"(?<!\w)Kandoran", r"Kandorian", re.IGNORECASE ],
-    [ "Moiraine", r"(?<!\[\[es\:)Moraine", r"Moiraine", 0 ],
+    [ "Moiraine (non-Spanish)", r"(?<!\[\[es\:)Moraine", r"Moiraine", 0 ],
+    [ "Moiraine", r"(?<!\w)Mioiraine(?!\w)", r"Moiraine", 0 ],
     [ "Perrin", r"Perin", r"Perrin", 0 ],
     [ "shield", r"([Ss])hiled", r"\1hield", 0 ],
     [ "siege", r"(?<!\w)seige(?!\w)", r"siege", 0 ],
@@ -75,7 +77,7 @@ spelling_re_modifiers = [
     [ "Turak", r"Turok", r"Turak", 0 ],
     [ "wolf dream", r"(wolf)(dream)", r"\1 \2", re.IGNORECASE ],
     # The extra look behind and look ahead help avoid references to the Perrin's Wolf Dreams page and the Wolf Dreams chapter.
-    [ "wolf dream (capitalization)", modifier_makelc_lookbehind + r"(?<!\[\[Perrin's )(?<!Chapter 9\|)(?<!DISPLAYTITLE:\'\')wolf dream", r"wolf dream", re.IGNORECASE ], # Needs to be tested
+    [ "wolf dream (capitalization)", modifier_firstcase_lookbehind + r"(?<!\[\[Perrin's )(?<!Chapter 9\|)(?<!DISPLAYTITLE:\'\')wolf dream", r"wolf dream", re.IGNORECASE ], # Needs to be tested
     # [ "Capitalize TAR.", r"tel'aran'rhiod", r"Tel'aran'rhiod", 0, re.IGNORECASE ], # Needs to be tested
     # [ "Lowercase sul'dam.", r"([^\.\!\?]\s|\[)Sul'dam", r"\1sul'dam", 0, re.IGNORECASE ], # Needs to be tested
     # [ "Lowercase damane.", r"([^\.\!\?]\s|\[)Damane", r"\1damane", 0, re.IGNORECASE ], # Needs to be tested
