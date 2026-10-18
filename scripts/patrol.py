@@ -48,6 +48,7 @@ spelling_re_modifiers = [
     [ "a'dam", modifier_lookbehind + r"adam(?![A-Za-rt-z])", r"a'dam", 0 ],
     [ "Aiel", r"(\W)[Aa]eil", r"\1Aiel", 0 ],
     [ "Amadician", r"Amadican", r"Amadician", re.IGNORECASE ],
+    [ "Amyrlin", r"(?<!\w)Amylin", r"Amyrlin", 0 ],
     [ "Andoran", r"(\W)Andorian", r"\1Andoran", re.IGNORECASE ],
     [ "Artur Hawkwing", r"Arthur Hawkw{0,1}ing", r"Artur Hawkwing", re.IGNORECASE ],
     [ "Asha'man", r"(Ashamen)|(Asha'men)", r"Asha'man", re.IGNORECASE ],
