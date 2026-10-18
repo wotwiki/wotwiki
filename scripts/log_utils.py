@@ -7,6 +7,7 @@ import sys
 
 from discord_botter import botter
 from discord_logger import DWP, DiscordTextChannelHandler
+from page_op import PageOp
 from wotwiki_cfg import cfg_json
 
 class Filter(logging.Filter):
@@ -42,19 +43,26 @@ class Formatter(logging.Formatter):
 
 class DiscordFormatter(Formatter):
     def format(self, record):
-        if record.args:
+        # print(f"df {type(record)}:")
+        # for arg in record.args:
+        #     print(f"df   {type(arg)}: {arg}")
+        if isinstance(record.msg, PageOp):
+            return record.msg
+        old_args = record.args
+        if old_args:
             new_args = tuple(
                 f"{arg.__to_discord_str__()}" if hasattr(arg, '__to_discord_str__') else arg
                 for arg in record.args
             )
             record.args = new_args
-        return super().format(record)
+        r = super().format(record)
+        record.args = old_args
+        return r
 
 def setup_logger(logger, discordChannelId=None):
     global formatter
     global stdoutHandler
     global stderrHandler
-    global discordStdFormatter
     global discordErrFormatter
     logger.addFilter(Filter())
     logger.addHandler(fileHandler)
@@ -66,15 +74,24 @@ def setup_logger(logger, discordChannelId=None):
             if errorCode != 0:
                 raise Exception(f"Error starting Discord bot: {errorCode}")
         channel = botter.bot.get_channel(discordChannelId)
-        discordStdHandler = DiscordTextChannelHandler(channel)
-        discordStdHandler.setFormatter(discordStdFormatter)
-        discordStdHandler.setLevel(logging.INFO)
-        discordStdHandler.addFilter(MaxLogLevelFilter(logging.INFO))
         discordErrHandler = DiscordTextChannelHandler(channel)
         discordErrHandler.setFormatter(discordErrFormatter)
         discordErrHandler.setLevel(logging.WARNING)
-        logger.addHandler(discordStdHandler)
         logger.addHandler(discordErrHandler)
+    return logger
+
+def setup_logger_discord(logger, discordChannelId):
+    global discordStdFormatter
+    if not botter.ready:
+        errorCode = botter.run()
+        if errorCode != 0:
+            raise Exception(f"Error starting Discord bot: {errorCode}")
+    channel = botter.bot.get_channel(discordChannelId)
+    discordStdHandler = DiscordTextChannelHandler(channel)
+    discordStdHandler.setFormatter(discordStdFormatter)
+    discordStdHandler.setLevel(logging.INFO)
+    discordStdHandler.addFilter(MaxLogLevelFilter(logging.INFO))
+    logger.addHandler(discordStdHandler)
     return logger
 
 logging.getLogger().setLevel(logging.NOTSET)
@@ -104,3 +121,5 @@ stdoutHandler.setLevel(logging.WARNING)
 stdoutHandler.addFilter(MaxLogLevelFilter(logging.WARNING))
 logger = logging.getLogger("wotwiki")
 setup_logger(logger, discordChannelId=cfg_json["discord_log_channel_id"] or None)
+discordLogger = logging.getLogger("wotwiki-discord")
+setup_logger_discord(discordLogger, discordChannelId=cfg_json["discord_log_channel_id"] or None)

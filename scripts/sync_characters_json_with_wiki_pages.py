@@ -22,7 +22,9 @@ import utils
 from command import Command, Verbosity, run_command
 from discord_logger import DWP, DWT
 from log_utils import logger as log
+from log_utils import discordLogger as dlog
 from page_mod import PageMod
+from page_op import PageOp
 from ticker import Ticker
 
 language = "en"
@@ -89,8 +91,13 @@ class SyncCharactersJsonWithWikiPages(Command):
             self.preloaded_pages = None
             intro_log = f"Running character sync for {wiki_name} wiki."
             log.info(intro_log)
+            dlog.info(intro_log)
             self.process_args()
             log.log(self.parsed_args.save_changes and logging.INFO or logging.WARNING,
+                "self.parsed_args.save_changes is %s, this run %s save changes to the wiki!",
+                self.parsed_args.save_changes,
+                self.parsed_args.save_changes and "MAY" or "WILL NOT")
+            dlog.log(self.parsed_args.save_changes and logging.INFO or logging.WARNING,
                 "self.parsed_args.save_changes is %s, this run %s save changes to the wiki!",
                 self.parsed_args.save_changes,
                 self.parsed_args.save_changes and "MAY" or "WILL NOT")
@@ -110,7 +117,6 @@ class SyncCharactersJsonWithWikiPages(Command):
                 self.process_queue()
         except Exception as e:
             log.error("Error during character sync: %s", e, exc_info=True)
-            # log.error(e)
             raise
         return 0
 
@@ -131,7 +137,7 @@ class SyncCharactersJsonWithWikiPages(Command):
         elif type(obj[key]) == dict:
             if key in obj[key]:
                 return obj[key][key]
-            raise Exception("Missing nested key %r: %r for object %r", (key, obj[key], obj))
+            raise Exception("Missing nested key %r: %s for object %s", (key, obj[key], obj))
         return obj[key]
 
     def get_field_refs(self, obj, key):
@@ -147,8 +153,11 @@ class SyncCharactersJsonWithWikiPages(Command):
             if val and len(val) > 0:
                 log.warning("%r mismatch on page %s: JSON %r is %r -> %r but wiki page has %r.", param_name, page, param_name, jsonval, jsonval_norm, val)
             if jsonval_norm is not None:
-                log.info("Overriding %r for page %s: %r -> %r", template.arguments[param_idx].name, page, val, jsonval_norm)
-                mod.summary.append(f"[{template.arguments[param_idx].name}]")
+                pm = PageMod(page=page,
+                    description=[ "Overriding %r: %r -> %r".format(template.arguments[param_idx].name,  val, jsonval_norm) ],
+                    summary=[f"[{template.arguments[param_idx].name}]"])
+                log.info(pm)
+                dlog.info(pm)
                 template.set_arg(template.arguments[param_idx].name, f"{jsonval_norm}\n")
             return True
         return False
@@ -250,7 +259,7 @@ class SyncCharactersJsonWithWikiPages(Command):
                         if "affiliation" in targ_idxs:
                             changed = self.override_template_param(page, mod, parsed.templates[char_templ_idx], targ_idxs["affiliation"], "affiliation", None, "Black Ajah") or changed
                         else:
-                            log.info("Adding affiliation for character %s on page %s: 'Black Ajah'.", char_dwp, page)
+                            log.info(PageOp(page=page, description=[ f"Adding affiliation: 'Black Ajah'." ]))
                             mod.summary.append("[ajah (black)]")
                             parsed.templates[char_templ_idx].set_arg("affiliation", "Black Ajah\n")
                             changed = True
@@ -263,7 +272,7 @@ class SyncCharactersJsonWithWikiPages(Command):
                             changed = self.override_template_param(page, mod, parsed.templates[char_templ_idx], targ_idxs[key], key, ajah, ajah) or changed
                         else:
                             if ajah is not None and len(ajah) > 0:
-                                log.info("Adding %r for character %s on page %s: %s.", key, char_dwp, page, ajah)
+                                log.info(PageOp(page=page, description=[ f"Adding {key}: {ajah}." ]))
                                 mod.summary.append(f"[{key}]")
                                 parsed.templates[char_templ_idx].set_arg(key, f"{ajah}\n")
                                 changed = True
@@ -278,13 +287,13 @@ class SyncCharactersJsonWithWikiPages(Command):
                         #     parsed.templates[char_templ_idx].set_arg("name", f"{name}\n")
                         #     changed = True
                     for cf in copy_fields:
-                        log.info("Checking %r for character %s on page %s.", cf, char_dwp, page)
+                        log.info(PageOp(page=page, description=[ f"Checking {cf}." ]))
                         val = self.get_val_or_epon_dict_value(chars[char], cf)
                         if val is not None:
                             if cf in targ_idxs:
                                 changed = self.override_template_param(page, mod, parsed.templates[char_templ_idx], targ_idxs[cf], cf, val, val) or changed
                             else:
-                                log.info("Adding %r for character %s on page %s: %r.", cf, char_dwp, page, val)
+                                log.info(PageOp(page=page, description=[ f"Adding {cf}: {val}." ]))
                                 mod.summary.append(f"[{cf}]")
                                 parsed.templates[char_templ_idx].set_arg(f"{cf}", f"{val}\n")
                                 changed = True
@@ -300,7 +309,7 @@ class SyncCharactersJsonWithWikiPages(Command):
                                 changed = self.override_template_param(page, mod, parsed.templates[char_templ_idx], targ_idxs[rkey], rkey, ref_wt, ref_wt) or changed
                             else:
                                 if ref_wt is not None:
-                                    log.info("Adding references for character %s on page %s: %r: %r.", char_dwp, page, rkey, ref_wt)
+                                    log.info(PageOp(page=page, description=[ f"Adding references {rkey}: {ref_wt}." ]))
                                     mod.summary.append(f"[{rkey}]")
                                     parsed.templates[char_templ_idx].set_arg(f"{rkey}", f"{ref_wt}\n")
                                     changed = True
@@ -337,8 +346,9 @@ class SyncCharactersJsonWithWikiPages(Command):
                                 deduped_summary.append(line)
                         mod.summary = " ".join(deduped_summary)
                         if (page.botMayEdit()):
-                            log_msg = f"Page '{page.title()}' needs update; queuing. Summary: {mod.summary}"
-                            log.info(log_msg)
+                            pm = PageMod(page=page, description=[ f"Page needs update; queuing." ], summary=mod.summary)
+                            log.info(pm)
+                            dlog.info(pm)
                             mod_queue.append(mod)
                             queued_pages.append(mod.get_title())
                             page_id += 1
@@ -347,20 +357,18 @@ class SyncCharactersJsonWithWikiPages(Command):
                                 changes_file.write("\n")
                         else:
                             page.text = pre_text
-                            log.warning("Page %s needs update but bot is not allowed to edit it. Summary: %s", page, mod.summary)
+                            log.warning(PageOp(page=page, description=[ f"Page needs update but bot is not allowed to edit it. Summary: {mod.summary}" ]))
                             pages_noperm += 1
                     for key in ["ajah", "ajahs"]:
                         if key in chars[char]:
                             del chars[char][key]
                 except Exception as e:
                     exc_info = True
-                    err_log = f"Error processing page '{page.title()}':"
                     if isinstance(e, NoPageError):
-                        err_log = f"Page '{page.title()}' does not exist."
                         exc_info = False
-                        log.debug(err_log, exc_info=exc_info)
+                        log.debug("Page %s does not exist: %s", page, e, exc_info=exc_info)
                     else:
-                        log.error(err_log, exc_info=exc_info)
+                        log.error("Error processing page %s: %s", page, e, exc_info=exc_info)
                     failed_pages.append(page.title())
                 page_cnt = page_cnt + 1
         if len(mod_queue) > 0:
@@ -370,12 +378,18 @@ class SyncCharactersJsonWithWikiPages(Command):
         with open(self.parsed_args.character_json_remaining, "w") as f:
             json.dump(chars, f, indent=2, sort_keys=True)
         log.debug("Failed pages: %s", failed_pages)
+        dlog.debug("Failed pages: %s", failed_pages)
         if failed_pages and len(failed_pages) > 0:
             log.warning("Failed pages: %s", failed_pages)
+            dlog.warning("Failed pages: %s", failed_pages)
         log.debug("Missing pages: %s", missing_pages)
+        dlog.debug("Missing pages: %s", missing_pages)
         log.info("Queued pages: %s", queued_pages)
+        dlog.info("Queued pages: %s", queued_pages)
         (self.parsed_args.verbosity == Verbosity.NORMAL) and print("")
-        self.print_n(f"{page_cnt}/{len(chars)} characters processed. {len(queued_pages)} queued. {pages_noperm} skipped due to perms. {len(failed_pages)} pages produced errors.")
+        summary=f"{page_cnt}/{len(chars)} characters processed. {len(queued_pages)} queued. {pages_noperm} skipped due to perms. {len(failed_pages)} pages produced errors."
+        self.print_n(summary)
+        dlog.info(summary)
 
     def process_queue(self):
         mod_queue = None
@@ -388,14 +402,19 @@ class SyncCharactersJsonWithWikiPages(Command):
             for line in f:
                 log.debug(line.strip())
                 print(line.strip())
-        if not self.parsed_args.non_interactive and input("Enter 'yes' to apply above changes: ").strip().lower() != 'yes':
-            raise Exception("Aborting due to user input.")
+        if not self.parsed_args.non_interactive:
+            dlog.info("Prompting user for manual confirmation to apply changes to the wiki.")
+            if input("Enter 'yes' to apply above changes: ").strip().lower() != 'yes':
+                dlog.info("User declined to apply changes.")
+                raise Exception("Aborting due to user input.")
+            dlog.info("User approved changes.")
         with open(mod_queue_json_path, "r") as f:
             mod_queue = json.load(f)
         for mod_dict in mod_queue:
             mod = PageMod.from_dict(mod_dict)
             mod_dwp = DWP(mod.get_title())
             log.info("Processing %s", mod_dwp)
+            dlog.info("Processing %s", mod_dwp)
             page = mod.page or pywikibot.Page(self.site, mod.get_title())
             page.get(force=True, get_redirect=True)
             pre_path = f"{mod_queue_dir_path}/{mod.get_title()}/pre.wiki"
@@ -416,6 +435,7 @@ class SyncCharactersJsonWithWikiPages(Command):
                 page.text = post_text
                 try:
                     log.info("Saving %s with summary: %s", mod_dwp, mod.summary)
+                    dlog.info("Saving %s with summary: %s", mod_dwp, mod.summary)
                     if (self.parsed_args.save_changes):
                         page.save(summary=mod.summary, bot=True, minor=True)
                         post_page = mod.page or pywikibot.Page(self.site, mod.get_title())

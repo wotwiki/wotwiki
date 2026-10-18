@@ -14,10 +14,10 @@ class DiscordBot(commands.Bot):
         print(f'Logged in as {self.user}')
         self.shared_dict["ready"] = True
 
-    def send_message(self, channel, message):
+    def send_message(self, channel, message=None, embed=discord.Embed()):
         # TODO: Queue the message and return
         # self.manager.print_n(f'Channel: {channel}, message: {message}')
         # Schedule the coroutine on the bot's event loop from another thread
-        future = asyncio.run_coroutine_threadsafe(channel.send(message), self.loop)
+        future = asyncio.run_coroutine_threadsafe(channel.send(message, embed=embed), self.loop)
         # Optionally wait for the result if needed
         future.result(timeout=30)
